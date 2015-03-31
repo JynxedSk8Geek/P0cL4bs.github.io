@@ -4,7 +4,7 @@
   <title><![CDATA[P0cL4bs Team]]></title>
   <link href="http://p0cl4bs.github.io/atom.xml" rel="self"/>
   <link href="http://p0cl4bs.github.io/"/>
-  <updated>2015-03-31T16:06:29-03:00</updated>
+  <updated>2015-03-31T17:06:14-03:00</updated>
   <id>http://p0cl4bs.github.io/</id>
   <author>
     <name><![CDATA[P0cL4bs]]></name>
@@ -12,6 +12,107 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kadimus LFI Scan &amp; Exploit Tool]]></title>
+    <link href="http://p0cl4bs.github.io/blog/2015/03/31/kadimus-lfi-scan-and-exploit-tool/"/>
+    <updated>2015-03-31T16:20:53-03:00</updated>
+    <id>http://p0cl4bs.github.io/blog/2015/03/31/kadimus-lfi-scan-and-exploit-tool</id>
+    <content type="html"><![CDATA[<p>Hey Folks, depois de algum tempo de trabalho nosso membro <a href="https://github.com/mmxxm">mmxxm</a> criou uma tools para checar e explorar sites com falhas de <a href="https://www.owasp.org/index.php/Testing_for_Local_File_Inclusion">Local File Inclusion</a> - aka LFI -.</p>
+
+<p>Agora neste tutorial vamos  mostrar como instalar ela no seu sistema.</p>
+
+<h2>Instalação</h2>
+
+<p>Primeiramente acesse a página de releases do nosso projeto no <a href="https://github.com/P0cL4bs/Kadimus/releases">Github</a>, e copie o link da release compactada, no momento que escrevemos esse post a versão atual é a <a href="https://github.com/P0cL4bs/Kadimus/releases/tag/1.1">1.1</a>.</p>
+
+<p>Baixamos o arquivo e extraimos ele:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>wget https://github.com/P0cL4bs/Kadimus/archive/1.1.tar.gz
+</span><span class='line'><span class="nv">$ </span>tar zxvf 1.1.tar.gz
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Então mova a pasta para o diretorios de softwares do seu sistem, no nosso caso <code>/opt/</code> pois estamos no Debian:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>sudo mv Kadimus-1.1 /opt/Kadimus/
+</span><span class='line'><span class="nv">$ </span><span class="nb">cd</span> /opt/Kadimus/
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Agora verificamos se o sistemas possui todas as dependencias para rodarmos o Kadimus:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>sudo ./configure
+</span><span class='line'>Checking libraries...
+</span><span class='line'>libcurl Ok
+</span><span class='line'>libssl  Ok
+</span><span class='line'>libpcre Ok
+</span><span class='line'>libssh  Ok
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Se você receber a mesma mensagem acima é porque está tudo ok, se não consulte nosso <a href="https://github.com/P0cL4bs/Kadimus">repositório</a> ou abra uma <a href="https://github.com/P0cL4bs/Kadimus/issues">issue</a>.</p>
+
+<p>Agora para instalarmos usamos o Make:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>sudo make
+</span><span class='line'>......
+</span><span class='line'>Aqui vai aparecer o log da compilação
+</span><span class='line'>.....
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> Ok
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Pronto Agora o <a href="https://github.com/P0cL4bs/Kadimus">Kadimus</a> está instalado em seu sistema, vamos executa-lo:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>./kadimus
+</span><span class='line'> _  __         _ _
+</span><span class='line'><span class="p">|</span> <span class="p">|</span>/ /__ _  __<span class="p">|</span> <span class="o">(</span>_<span class="o">)</span>_ __ ___  _   _ ___
+</span><span class='line'><span class="p">|</span> <span class="s1">&#39; // _` |/ _` | | &#39;</span>_ <span class="sb">`</span> _ <span class="se">\|</span> <span class="p">|</span> <span class="p">|</span> / __<span class="p">|</span>
+</span><span class='line'><span class="p">|</span> . <span class="se">\ </span><span class="o">(</span>_<span class="p">|</span> <span class="p">|</span> <span class="o">(</span>_<span class="p">|</span> <span class="p">|</span> <span class="p">|</span> <span class="p">|</span> <span class="p">|</span> <span class="p">|</span> <span class="p">|</span> <span class="p">|</span> <span class="p">|</span>_<span class="p">|</span> <span class="se">\_</span>_ <span class="se">\</span>
+</span><span class='line'><span class="p">|</span>_<span class="p">|</span><span class="se">\_\_</span>_,_<span class="p">|</span><span class="se">\_</span>_,_<span class="p">|</span>_<span class="p">|</span>_<span class="p">|</span> <span class="p">|</span>_<span class="p">|</span> <span class="p">|</span>_<span class="p">|</span><span class="se">\_</span>_,_<span class="p">|</span>___/
+</span><span class='line'>
+</span><span class='line'>  v1.1 - LFI Scan <span class="p">&amp;</span> Exploit Tool <span class="o">(</span>@hc0d3r - P0cL4bs Team<span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>kadimus: try <span class="s1">&#39;kadimus -h&#39;</span> or <span class="s1">&#39;kadimus --help&#39;</span> <span class="k">for</span> display <span class="nb">help</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Mas para podermos acessar o kadimus de qualquer local no nosso sistema, vamos adicionar ele no nosso diretório bin:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>sudo ln -s /opt/Kadimus/kadimus /usr/bin/kadimus
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Pronto agora podemos usar todo o poder do Kadimus em nossos testes de penetração, mas atenção usem com moderação! :P</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Rails Session Injection Challenge: Criando Um Módulo Para O Metasploit]]></title>
