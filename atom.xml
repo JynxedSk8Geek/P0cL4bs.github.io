@@ -4,7 +4,7 @@
   <title><![CDATA[P0cL4bs Team]]></title>
   <link href="http://p0cl4bs.github.io/atom.xml" rel="self"/>
   <link href="http://p0cl4bs.github.io/"/>
-  <updated>2015-03-31T17:06:14-03:00</updated>
+  <updated>2015-03-31T17:12:59-03:00</updated>
   <id>http://p0cl4bs.github.io/</id>
   <author>
     <name><![CDATA[P0cL4bs]]></name>
@@ -18,7 +18,7 @@
     <link href="http://p0cl4bs.github.io/blog/2015/03/31/kadimus-lfi-scan-and-exploit-tool/"/>
     <updated>2015-03-31T16:20:53-03:00</updated>
     <id>http://p0cl4bs.github.io/blog/2015/03/31/kadimus-lfi-scan-and-exploit-tool</id>
-    <content type="html"><![CDATA[<p>Hey Folks, depois de algum tempo de trabalho nosso membro <a href="https://github.com/mmxxm">mmxxm</a> criou uma tools para checar e explorar sites com falhas de <a href="https://www.owasp.org/index.php/Testing_for_Local_File_Inclusion">Local File Inclusion</a> - aka LFI -.</p>
+    <content type="html"><![CDATA[<p>Hey Folks, depois de algum tempo de trabalho nosso membro <a href="https://github.com/mmxxm">mmxm</a> criou uma tools para checar e explorar sites com falhas de <a href="https://www.owasp.org/index.php/Testing_for_Local_File_Inclusion">Local File Inclusion</a> - aka LFI -.</p>
 
 <p>Agora neste tutorial vamos  mostrar como instalar ela no seu sistema.</p>
 
